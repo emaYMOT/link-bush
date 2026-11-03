@@ -13,7 +13,7 @@ export default function Home() {
 
   return (
     <main className="relative flex min-h-dvh flex-col">
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-end px-5 pt-24 pb-[max(2rem,env(safe-area-inset-bottom))] sm:justify-center sm:pb-16">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-start px-5 pt-[max(5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:pt-[12vh] sm:pb-16">
         {error && <p className="rounded-xl bg-noche-2/90 p-4 text-sm text-niebla">No pudimos cargar la página. Revisa tu conexión y vuelve a intentarlo.</p>}
 
         <header className="mb-8 flex flex-col items-center text-center">
