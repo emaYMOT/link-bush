@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { limpiarEnSegundoPlano } from '../../lib/archivos'
 import { bySort } from '../../lib/format'
 import { store, type Collection, type RowOf } from '../../lib/store'
 import type { Draft } from '../../lib/types'
@@ -23,6 +24,10 @@ export function useAdminList<C extends Collection>(collection: C) {
     reload()
   }, [reload])
 
+  // Fotos de productos y de categorías: al cambiarlas o borrarlas, las viejas se limpian de Storage.
+  const conFotos = collection === 'menu_items' || collection === 'menu_categories'
+  const limpiar = () => conFotos && limpiarEnSegundoPlano(siteId)
+
   async function save(row: Draft<RowOf<C>>, message = 'Guardado') {
     try {
       const saved = (await store.save(collection, siteId, row)) as RowOf<C>
@@ -31,6 +36,7 @@ export function useAdminList<C extends Collection>(collection: C) {
         return list.some((r) => r.id === saved.id) ? list.map((r) => (r.id === saved.id ? saved : r)) : [...list, saved]
       })
       toast.success(message)
+      limpiar()
       return saved
     } catch (e) {
       toast.error((e as Error).message)
@@ -45,6 +51,7 @@ export function useAdminList<C extends Collection>(collection: C) {
     try {
       await store.save(collection, siteId, { ...current, ...fields } as Draft<RowOf<C>>)
       if (message) toast.success(message)
+      limpiar()
     } catch (e) {
       toast.error((e as Error).message)
       reload()
@@ -56,6 +63,7 @@ export function useAdminList<C extends Collection>(collection: C) {
     try {
       await store.remove(collection, id)
       toast.success(message)
+      limpiar()
     } catch (e) {
       toast.error((e as Error).message)
       reload()

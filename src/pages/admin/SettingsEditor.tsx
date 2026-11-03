@@ -1,10 +1,12 @@
-import { Copy, FileUp, Link2, QrCode, Trash2 } from 'lucide-react'
+import { Copy, Eraser, FileUp, Link2, QrCode, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { Field, TextInput } from '../../components/Field'
 import Modal, { Button, CancelButton } from '../../components/Modal'
 import Toggle from '../../components/Toggle'
 import { UNITS } from '../../lib/format'
+import { store } from '../../lib/store'
+import { analizarArchivos, borrarSobrantes, formatBytes, type AnalisisArchivos } from '../../lib/archivos'
 import { contarProductos, importarCatalogo, leerCatalogo, slugError, urlPublica, type CatalogoImportado } from '../../lib/paginas'
 import type { PriceUnit, Vocab } from '../../lib/types'
 import { clearPublicCache } from '../../lib/useCached'
@@ -57,6 +59,7 @@ export default function SettingsEditor() {
         <SlugCard />
         <VocabCard />
         <ImportCard />
+        <FilesCard />
 
         <Card title="Copiar o eliminar">
           <div className="flex flex-wrap gap-2">
@@ -309,6 +312,65 @@ function ImportCard() {
             <p className="text-sm text-gris">Las fotos que vengan con rutas de otra web no se importan; súbelas después en cada {m.uno}.</p>
           </div>
         </Modal>
+      )}
+    </Card>
+  )
+}
+
+function FilesCard() {
+  const { site } = useAdminSite()
+  const [analisis, setAnalisis] = useState<AnalisisArchivos | null>(null)
+  const [busy, setBusy] = useState<'buscando' | 'borrando' | null>(null)
+
+  async function buscar() {
+    setBusy('buscando')
+    try {
+      setAnalisis(await analizarArchivos(site.id))
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function borrar() {
+    if (!analisis) return
+    setBusy('borrando')
+    try {
+      await borrarSobrantes(analisis.sobran)
+      toast.success(`${analisis.sobran.length} archivos borrados (${formatBytes(analisis.bytesSobran)})`)
+      setAnalisis(await analizarArchivos(site.id))
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <Card title="Archivos" description="Las fotos y videos que reemplazas o quitas se borran solos de Supabase. Aquí puedes revisarlo y limpiar a mano.">
+      {store.mode === 'demo' ? (
+        <p className="text-sm text-gris">En modo demo las fotos viven dentro de la página, no hay archivos que limpiar.</p>
+      ) : (
+        <div className="space-y-3">
+          <Button variant="outline" onClick={buscar} busy={busy === 'buscando'} busyLabel="Buscando…"><Eraser size={18} /> Buscar archivos sin usar</Button>
+          {analisis && (
+            <p className="text-sm">
+              Esta página tiene <strong>{analisis.total}</strong> {analisis.total === 1 ? 'archivo' : 'archivos'} ({formatBytes(analisis.bytes)}).{' '}
+              {analisis.sobran.length === 0 ? (
+                'Todos están en uso.'
+              ) : (
+                <>
+                  <strong>{analisis.sobran.length}</strong> ya no se {analisis.sobran.length === 1 ? 'usa' : 'usan'} y ocupan {formatBytes(analisis.bytesSobran)}.
+                </>
+              )}
+            </p>
+          )}
+          {analisis && analisis.sobran.length > 0 && (
+            <Button variant="danger" onClick={borrar} busy={busy === 'borrando'} busyLabel="Borrando…"><Trash2 size={18} /> Borrar {analisis.sobran.length === 1 ? 'el archivo' : `los ${analisis.sobran.length} archivos`} sin usar</Button>
+          )}
+          <p className="text-xs text-gris">Los archivos subidos hace menos de 2 horas no se tocan: podrían ser de un cambio que aún no guardas.</p>
+        </div>
       )}
     </Card>
   )

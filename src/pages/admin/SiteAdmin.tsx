@@ -1,6 +1,7 @@
 import { ChevronLeft, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { limpiarEnSegundoPlano } from '../../lib/archivos'
 import { store } from '../../lib/store'
 import { palabras } from '../../lib/vocab'
 import { EmptyState } from './AdminApp'
@@ -40,6 +41,8 @@ export default function SiteAdmin() {
     try {
       const saved = await store.updateSite(site!.id, patch)
       setSites((list) => list.map((s) => (s.id === saved.id ? saved : s)))
+      // Foto de perfil, video o póster reemplazados: los anteriores se borran de Storage.
+      if ('avatar_url' in patch || 'theme' in patch) limpiarEnSegundoPlano(site!.id)
       return saved
     } catch (e) {
       toast.error((e as Error).message)

@@ -28,6 +28,12 @@ const MAX_SIDE: Record<ImageFolder, [number, number]> = {
 /** Máximo que acepta el almacenamiento (igual que en schema.sql). */
 export const VIDEO_MAX_MB = 20
 
+export interface StoredFile {
+  path: string // "<id-de-la-página>/video/<código>.mp4"
+  size: number
+  created_at: string
+}
+
 export interface AdminSession {
   email: string
 }
@@ -54,6 +60,9 @@ export interface DataStore {
   reorder(collection: Collection, orderedIds: string[]): Promise<void>
   uploadImage(file: File, siteId: string, folder: ImageFolder): Promise<string>
   uploadVideo(file: File, siteId: string): Promise<string>
+  /** Archivos guardados de una página (en demo no hay: las fotos viven dentro de la página). */
+  listFiles(siteId: string): Promise<StoredFile[]>
+  removeFiles(paths: string[]): Promise<void>
   getSession(): Promise<AdminSession | null>
   signIn(email: string, password: string): Promise<void>
   signOut(): Promise<void>
@@ -164,6 +173,25 @@ function supabaseStore(client: SupabaseClient): DataStore {
     async uploadVideo(file, siteId) {
       const ext = file.type === 'video/webm' ? 'webm' : 'mp4'
       return upload(`${siteId}/video/${crypto.randomUUID()}.${ext}`, file, file.type || 'video/mp4')
+    },
+
+    async listFiles(siteId) {
+      const bucket = client.storage.from('media')
+      const out: StoredFile[] = []
+      for (const folder of ['avatar', 'items', 'categories', 'poster', 'video']) {
+        const { data, error } = await bucket.list(`${siteId}/${folder}`, { limit: 1000 })
+        fail(error)
+        // Las carpetas vienen sin id; solo interesan los archivos.
+        for (const f of data ?? []) if (f.id) out.push({ path: `${siteId}/${folder}/${f.name}`, size: Number(f.metadata?.size ?? 0), created_at: f.created_at ?? '' })
+      }
+      return out
+    },
+
+    async removeFiles(paths) {
+      for (let i = 0; i < paths.length; i += 100) {
+        const { error } = await client.storage.from('media').remove(paths.slice(i, i + 100))
+        fail(error)
+      }
     },
 
     async getSession() {
@@ -344,6 +372,9 @@ function demoStore(): DataStore {
     async uploadVideo() {
       throw new Error('En modo demo el video no cabe en el navegador. Pega el enlace de un video o conecta Supabase.')
     },
+
+    listFiles: async () => [],
+    removeFiles: async () => {},
 
     getSession: async () => delay(read().session),
 

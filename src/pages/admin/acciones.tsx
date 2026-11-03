@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import { Field, focusFirstInvalid, TextInput } from '../../components/Field'
 import Modal, { Button, CancelButton } from '../../components/Modal'
+import { borrarArchivosDePagina } from '../../lib/archivos'
 import { duplicarPagina, slugError, slugLibre, urlPublica } from '../../lib/paginas'
 import { store } from '../../lib/store'
 import type { Site } from '../../lib/types'
@@ -105,6 +106,8 @@ export function DeleteSiteDialog({ site, onClose }: { site: Site; onClose: () =>
   async function submit() {
     setBusy(true)
     try {
+      // Primero sus archivos (fotos y video); si falla, igual se elimina la página y se pueden limpiar a mano.
+      await borrarArchivosDePagina(site.id).catch((e) => console.warn('No se pudieron borrar los archivos:', e))
       await store.removeSite(site.id)
       setSites((list) => list.filter((s) => s.id !== site.id))
       toast.success('Página eliminada')
