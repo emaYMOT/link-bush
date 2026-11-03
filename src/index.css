@@ -1,0 +1,477 @@
+@import "tailwindcss";
+
+/*
+  Dos familias de colores:
+  - Las de cada página (noche, cobre, cal…): estos valores son solo el respaldo. Al abrir una página,
+    src/lib/tema.ts las reemplaza con su diseño. "noche" es el fondo y "cobre" el acento.
+  - Las del panel (papel, superficie, tinta…): fijas, con modo claro y oscuro. El panel nunca usa las de la página.
+*/
+@theme {
+  --color-noche: #06121d;
+  --color-noche-2: #0c1f30;
+  --color-noche-3: #143049;
+  --color-cobre: #38bfc6;
+  --color-cobre-2: #6fd6dc;
+  --color-cal: #eaf5f8;
+  --color-niebla: #a3bccb;
+  --color-grafiti: #ff8a7a;
+
+  --color-papel: #f3f4f6;
+  --color-superficie: #ffffff;
+  --color-tinta: #15181d;
+  --color-gris: #5d6673;
+  --color-linea: #dfe3e8;
+  --color-resalte: #5b4ce0;
+  --color-peligro: #b3261e;
+  --color-exito: #1d8a5a;
+
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Onest", system-ui, sans-serif;
+  --font-precio: "Fraunces", Georgia, serif;
+  --font-ui: "Onest", system-ui, sans-serif;
+  --font-ui-display: "Fraunces", Georgia, serif;
+}
+
+/* Panel en modo oscuro: carbón neutro, para no confundirse con los colores de la página que se diseña. */
+html.oscuro {
+  --color-papel: #111317;
+  --color-superficie: #1a1d22;
+  --color-tinta: #eceef1;
+  --color-gris: #9ba4af;
+  --color-linea: #2d3239;
+  --color-resalte: #9488ff;
+  --color-peligro: #ff7a70;
+  --color-exito: #3fbf7f;
+}
+html.oscuro .panel { color-scheme: dark; }
+
+html, body, #root { min-height: 100%; }
+
+.font-display { font-weight: var(--peso-titulos, 600); letter-spacing: -0.005em; }
+.font-precio { font-weight: var(--peso-precios, 500); }
+.font-ui-display { font-weight: 600; letter-spacing: -0.01em; }
+
+html {
+  touch-action: manipulation;           /* sin el retraso de 300 ms al tocar */
+  scroll-padding-top: 5rem;             /* el foco no queda tapado por la barra fija */
+}
+button, a, label, select, summary, [role=button], input[type=checkbox] { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+body {
+  margin: 0;
+  background: var(--color-noche);
+  color: var(--color-cal);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Puesto por el script de index.html antes de pintar: el panel no destella con el fondo de la página. */
+html[data-ruta=admin] body { background: var(--color-papel); }
+
+:focus-visible {
+  outline: 2px solid var(--color-cobre);
+  outline-offset: 3px;
+}
+.panel :focus-visible { outline-color: var(--color-resalte); }
+
+/* Mezclas con los colores de la página (sirven igual con fondo oscuro o claro). */
+.sombra-texto { text-shadow: 0 2px 18px color-mix(in oklab, var(--color-noche) 70%, transparent); }
+.sombra-texto-suave { text-shadow: 0 1px 10px color-mix(in oklab, var(--color-noche) 88%, transparent); }
+.sombra-acento { box-shadow: 0 10px 30px -10px color-mix(in oklab, var(--color-cobre) 90%, transparent); }
+.tarjeta {
+  /* Sombra suave: sirve igual sobre fondos oscuros y claros. */
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-cal) 8%, transparent), 0 12px 30px -20px rgba(0, 0, 0, .45);
+}
+/*
+  Foto de perfil: forma (círculo o redondeada) y aro elegidos en el panel.
+  El aro de color va en ::before (detrás de la foto); el pulso y el punteado en ::after.
+*/
+@property --giro {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+.avatar { position: relative; flex-shrink: 0; border-radius: 9999px; }
+.avatar[data-forma=redondeado] { border-radius: 28%; }
+.avatar-foto { position: absolute; inset: 0; z-index: 1; overflow: hidden; border-radius: inherit; background: var(--color-noche-2); }
+.avatar::before, .avatar::after { content: ''; position: absolute; border-radius: inherit; pointer-events: none; }
+
+.avatar[data-aro=fino] .avatar-foto {
+  border: 1px solid color-mix(in oklab, var(--color-cobre) 60%, transparent);
+  box-shadow:
+    0 0 0 6px color-mix(in oklab, var(--color-noche) 55%, transparent),
+    0 0 0 7px color-mix(in oklab, var(--color-cobre) 25%, transparent),
+    0 0 60px -8px color-mix(in oklab, var(--color-cobre) 60%, transparent);
+}
+.avatar[data-aro=doble] .avatar-foto {
+  box-shadow: 0 0 0 2px var(--color-cobre), 0 0 0 6px var(--color-noche), 0 0 0 8px color-mix(in oklab, var(--color-cobre) 70%, transparent);
+}
+.avatar[data-aro=brillo] .avatar-foto {
+  border: 2px solid var(--color-cobre-2);
+  box-shadow: 0 0 0 5px color-mix(in oklab, var(--color-cobre) 22%, transparent), 0 0 34px 4px color-mix(in oklab, var(--color-cobre) 70%, transparent), 0 0 90px color-mix(in oklab, var(--color-cobre) 40%, transparent);
+}
+.avatar[data-aro=degradado] .avatar-foto,
+.avatar[data-aro=historia] .avatar-foto,
+.avatar[data-aro=giratorio] .avatar-foto { box-shadow: 0 0 0 3px var(--color-noche); }
+.avatar[data-aro=degradado]::before { inset: -5px; background: linear-gradient(135deg, var(--color-cobre-2), var(--color-cobre) 45%, color-mix(in oklab, var(--color-cobre) 40%, var(--color-noche))); }
+.avatar[data-aro=historia]::before { inset: -5px; background: conic-gradient(from 210deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #feda75); }
+.avatar[data-aro=giratorio]::before {
+  inset: -5px;
+  background: conic-gradient(from var(--giro), var(--color-cobre), transparent 30%, var(--color-cobre-2) 50%, transparent 80%, var(--color-cobre));
+  animation: girar 4s linear infinite;
+}
+@keyframes girar { to { --giro: 360deg; } }
+.avatar[data-aro=pulso] .avatar-foto { border: 2px solid var(--color-cobre); }
+.avatar[data-aro=pulso]::after { inset: 0; border: 2px solid var(--color-cobre); animation: pulso 2.4s cubic-bezier(.2,.7,.3,1) infinite; }
+@keyframes pulso {
+  from { transform: scale(1); opacity: .85; }
+  to { transform: scale(1.4); opacity: 0; }
+}
+.avatar[data-aro=punteado]::after { inset: -8px; border: 2px dashed var(--color-cobre); }
+.avatar[data-aro=punteado][data-forma=circulo]::after { animation: rodar 40s linear infinite; }
+@keyframes rodar { to { transform: rotate(360deg); } }
+
+/* Vidrio: el desenfoque va dentro del elemento, sobre el video. */
+.vidrio {
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  background-image: linear-gradient(180deg, color-mix(in oklab, var(--color-cal) 8%, transparent), transparent 60%);
+}
+
+/*
+  Botones del inicio. Se combinan cuatro elecciones del panel:
+  data-estilo (8 estilos), data-forma, data-tamano y data-sombra; --desenfoque sale del deslizador "Difuminado".
+  box-shadow = brillo interior del estilo (--interior) + sombra elegida (--sombra).
+*/
+.boton {
+  --interior: 0 0 #0000;
+  --sombra: 0 0 #0000;
+  position: relative;
+  display: flex;
+  min-height: 3.5rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  padding: .875rem 3.5rem;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  color: var(--color-cal);
+  box-shadow: var(--interior), var(--sombra);
+  transition: background-color 200ms, border-color 200ms, box-shadow 200ms, transform 200ms, color 200ms;
+}
+.boton:active { transform: scale(.98); }
+.boton .icono { position: absolute; left: 1.5rem; color: var(--color-cobre); }
+.boton[data-acento] .icono { color: var(--color-cobre-2); }
+
+/* Translúcidos: desenfocan el video que pasa por detrás. */
+.boton[data-estilo=vidrio], .boton[data-estilo=borde], .boton[data-estilo=neon], .boton[data-estilo=suave], .boton[data-estilo=degradado]:not([data-acento]) {
+  -webkit-backdrop-filter: blur(var(--desenfoque, 14px)) saturate(1.4);
+  backdrop-filter: blur(var(--desenfoque, 14px)) saturate(1.4);
+}
+
+/* Forma */
+.boton[data-forma=pildora] { border-radius: 9999px; }
+.boton[data-forma=redondeado] { border-radius: 1rem; }
+.boton[data-forma=suave] { border-radius: .5rem; }
+.boton[data-forma=recto] { border-radius: 0; }
+.boton[data-forma=hoja] { border-radius: 1.5rem .35rem; }
+
+/* Tamaño */
+.boton[data-tamano=compacto] { min-height: 2.875rem; padding-block: .6rem; font-size: 1rem; }
+.boton[data-tamano=grande] { min-height: 4rem; padding-block: 1.1rem; font-size: 1.15rem; font-weight: 600; }
+
+/* Sombra */
+.boton[data-sombra=suave] { --sombra: 0 8px 22px -14px rgba(0, 0, 0, .55); }
+.boton[data-sombra=marcada] { --sombra: 0 12px 30px -14px rgba(0, 0, 0, .75); }
+.boton[data-sombra=flotante] { --sombra: 0 24px 40px -18px rgba(0, 0, 0, .85), 0 4px 10px -6px rgba(0, 0, 0, .45); }
+.boton[data-sombra=brillo] { --sombra: 0 0 26px -6px color-mix(in oklab, var(--color-cal) 35%, transparent); }
+.boton[data-sombra=brillo][data-acento] { --sombra: 0 0 32px -4px color-mix(in oklab, var(--color-cobre) 85%, transparent); }
+
+/* Vidrio: translúcido con un brillo arriba. */
+.boton[data-estilo=vidrio] {
+  --interior: inset 0 1px 0 color-mix(in oklab, var(--color-cal) 14%, transparent);
+  background-image: linear-gradient(180deg, color-mix(in oklab, var(--color-cal) 8%, transparent), transparent 60%);
+  background-color: color-mix(in oklab, var(--color-cal) 7%, transparent);
+  border-color: color-mix(in oklab, var(--color-cal) 15%, transparent);
+}
+.boton[data-estilo=vidrio]:hover { background-color: color-mix(in oklab, var(--color-cal) 12%, transparent); border-color: color-mix(in oklab, var(--color-cal) 30%, transparent); }
+.boton[data-estilo=vidrio][data-acento] {
+  --interior: inset 0 1px 0 color-mix(in oklab, var(--color-cobre-2) 35%, transparent);
+  background-color: color-mix(in oklab, var(--color-cobre) 30%, transparent);
+  border-color: color-mix(in oklab, var(--color-cobre) 55%, transparent);
+}
+.boton[data-estilo=vidrio][data-acento]:hover { background-color: color-mix(in oklab, var(--color-cobre) 45%, transparent); border-color: color-mix(in oklab, var(--color-cobre) 80%, transparent); }
+
+/* Sólido: color lleno. */
+.boton[data-estilo=solido] { background-color: var(--color-noche-2); border-color: color-mix(in oklab, var(--color-cal) 10%, transparent); }
+.boton[data-estilo=solido]:hover { background-color: var(--color-noche-3); }
+.boton[data-estilo=solido][data-acento] { background-color: var(--color-cobre); border-color: var(--color-cobre); color: var(--color-noche); font-weight: 600; }
+.boton[data-estilo=solido][data-acento] .icono { color: var(--color-noche); }
+.boton[data-estilo=solido][data-acento]:hover { background-color: var(--color-cobre-2); }
+
+/* Borde: solo el contorno. */
+.boton[data-estilo=borde] { background-color: color-mix(in oklab, var(--color-noche) 35%, transparent); border-color: color-mix(in oklab, var(--color-cal) 40%, transparent); }
+.boton[data-estilo=borde]:hover { border-color: var(--color-cal); }
+.boton[data-estilo=borde][data-acento] { border-width: 2px; border-color: var(--color-cobre); }
+.boton[data-estilo=borde][data-acento]:hover { background-color: color-mix(in oklab, var(--color-cobre) 18%, transparent); }
+
+/* Degradado: el principal va del acento al acento claro. */
+.boton[data-estilo=degradado] {
+  background-image: linear-gradient(135deg, color-mix(in oklab, var(--color-cal) 16%, transparent), color-mix(in oklab, var(--color-cal) 4%, transparent));
+  border-color: color-mix(in oklab, var(--color-cal) 12%, transparent);
+}
+.boton[data-estilo=degradado]:hover { border-color: color-mix(in oklab, var(--color-cal) 30%, transparent); }
+.boton[data-estilo=degradado][data-acento] {
+  --interior: inset 0 1px 0 color-mix(in oklab, white 35%, transparent);
+  background-image: linear-gradient(135deg, var(--color-cobre), var(--color-cobre-2));
+  border-color: transparent;
+  color: var(--color-noche);
+  font-weight: 600;
+}
+.boton[data-estilo=degradado][data-acento] .icono { color: var(--color-noche); }
+.boton[data-estilo=degradado][data-acento]:hover { background-image: linear-gradient(135deg, var(--color-cobre-2), var(--color-cobre)); }
+
+/* Neón: contorno que brilla, por dentro y por fuera. */
+.boton[data-estilo=neon] {
+  --interior: inset 0 0 14px color-mix(in oklab, var(--color-cobre-2) 22%, transparent);
+  background-color: color-mix(in oklab, var(--color-noche) 45%, transparent);
+  border: 1.5px solid color-mix(in oklab, var(--color-cobre-2) 75%, transparent);
+  text-shadow: 0 0 10px color-mix(in oklab, var(--color-cobre-2) 60%, transparent);
+}
+.boton[data-estilo=neon] .icono { color: var(--color-cobre-2); filter: drop-shadow(0 0 6px var(--color-cobre-2)); }
+.boton[data-estilo=neon]:hover { --interior: inset 0 0 22px color-mix(in oklab, var(--color-cobre-2) 40%, transparent); }
+.boton[data-estilo=neon][data-acento] {
+  --interior: inset 0 0 18px color-mix(in oklab, var(--color-cobre) 45%, transparent);
+  border: 2px solid var(--color-cobre);
+  text-shadow: 0 0 12px var(--color-cobre);
+}
+.boton[data-estilo=neon][data-acento] .icono { color: var(--color-cobre); filter: drop-shadow(0 0 6px var(--color-cobre)); }
+
+/* Suave: tinte del acento, sin borde. */
+.boton[data-estilo=suave] { background-color: color-mix(in oklab, var(--color-cobre) 14%, transparent); }
+.boton[data-estilo=suave]:hover { background-color: color-mix(in oklab, var(--color-cobre) 22%, transparent); }
+.boton[data-estilo=suave][data-acento] { background-color: color-mix(in oklab, var(--color-cobre) 34%, transparent); font-weight: 600; }
+.boton[data-estilo=suave][data-acento]:hover { background-color: color-mix(in oklab, var(--color-cobre) 46%, transparent); }
+
+/* Minimal: solo texto con una línea debajo; el principal subrayado con el acento. */
+.boton[data-estilo=minimal] {
+  border-radius: 0 !important;
+  border-bottom-color: color-mix(in oklab, var(--color-cal) 22%, transparent);
+  --sombra: 0 0 #0000 !important;
+}
+.boton[data-estilo=minimal]:hover { border-bottom-color: var(--color-cal); }
+.boton[data-estilo=minimal][data-acento] { color: var(--color-cobre-2); font-weight: 600; border-bottom: 2px solid var(--color-cobre); }
+
+/* Relieve: borde grueso y sombra dura, estilo retro; se hunde al tocarlo. */
+.boton[data-estilo=relieve] {
+  background-color: var(--color-noche-2);
+  border: 2px solid var(--color-cal);
+  --sombra: 4px 4px 0 var(--color-cal) !important;
+  font-weight: 600;
+}
+.boton[data-estilo=relieve]:hover { transform: translate(-1px, -1px); --sombra: 5px 5px 0 var(--color-cal) !important; }
+.boton[data-estilo=relieve]:active { transform: translate(3px, 3px); --sombra: 1px 1px 0 var(--color-cal) !important; }
+.boton[data-estilo=relieve][data-acento] { background-color: var(--color-cobre); color: var(--color-noche); }
+.boton[data-estilo=relieve][data-acento] .icono { color: var(--color-noche); }
+
+/* Etiqueta pequeña en mayúsculas espaciadas, en el color de acento. */
+.etiqueta {
+  font-size: .72rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--color-cobre);
+}
+
+/* Un solo momento coreografiado: el inicio enciende sus luces en cascada. */
+@keyframes encender {
+  /* Con translate (no transform), así los botones pueden moverse al tocarlos después de aparecer. */
+  from { opacity: 0; translate: 0 14px; filter: blur(4px); }
+  to { opacity: 1; translate: none; filter: none; }
+}
+.encender {
+  animation: encender 700ms cubic-bezier(.2,.7,.2,1) both;
+  animation-delay: calc(var(--i, 0) * 50ms + 120ms);
+}
+
+/* Efectos de fondo mientras no hay video: burbujas y rayos (mar), luces titilantes (luces). */
+@keyframes burbuja {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: .8; }
+  100% { transform: translateY(-115px); opacity: 0; }
+}
+.burbuja { animation: burbuja var(--d, 14s) linear infinite; animation-delay: var(--delay, 0s); }
+@keyframes mecer {
+  0%, 100% { transform: skewX(0deg); opacity: .9; }
+  50% { transform: skewX(-4deg); opacity: .55; }
+}
+.rayos { transform-origin: 70px 0; animation: mecer 9s ease-in-out infinite; }
+@keyframes titilar {
+  0%, 100% { opacity: .95; }
+  50% { opacity: .45; }
+}
+.luz { animation: titilar var(--d, 4s) ease-in-out infinite; animation-delay: var(--delay, 0s); }
+/* Degradado: manchas de color que recorren el fondo. */
+@keyframes flotar {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  25% { transform: translate(-14%, 10%) scale(1.18) rotate(8deg); }
+  50% { transform: translate(-6%, 22%) scale(.92) rotate(-4deg); }
+  75% { transform: translate(10%, 8%) scale(1.12) rotate(6deg); }
+}
+.flotar { animation: flotar var(--d, 14s) ease-in-out infinite; animation-delay: var(--delay, 0s); }
+
+/* Luces: el resplandor de la lámpara respira, la neblina cruza y las luciérnagas vagan. */
+@keyframes respirar {
+  0%, 100% { transform: scale(1); opacity: .85; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+.respirar { transform-box: fill-box; transform-origin: center; animation: respirar 6s ease-in-out infinite; }
+@keyframes cruzar {
+  from { transform: translateX(-60px); }
+  to { transform: translateX(160px); }
+}
+.neblina { animation: cruzar var(--d, 40s) linear infinite; animation-delay: var(--delay, 0s); }
+@keyframes luciernaga {
+  0%, 100% { transform: translate(0, 0); opacity: .2; }
+  25% { transform: translate(var(--dx), calc(var(--dy) * -1)); opacity: 1; }
+  50% { transform: translate(calc(var(--dx) * -.6), var(--dy)); opacity: .5; }
+  75% { transform: translate(calc(var(--dx) * .4), calc(var(--dy) * .5)); opacity: 1; }
+}
+.luciernaga { animation: luciernaga var(--d, 8s) ease-in-out infinite; animation-delay: var(--delay, 0s); }
+
+/* Estrellas: el cielo gira despacio alrededor de un punto bajo el horizonte. */
+@keyframes girar-cielo { to { transform: rotate(360deg); } }
+.cielo-gira { transform-origin: 50px 120px; animation: girar-cielo 90s linear infinite; }
+
+/*
+  Partículas que suben o caen: cada una es una columna del alto del fondo que se desplaza su propio alto,
+  así recorren todo el fondo sin importar su tamaño (también en las miniaturas del panel).
+*/
+.columna { position: absolute; top: 0; bottom: 0; width: var(--t); animation: var(--anim) var(--d) linear infinite; animation-delay: var(--delay, 0s); }
+.columna > i { position: absolute; left: 0; width: var(--t); height: var(--t); }
+@keyframes subir-columna { from { transform: translate(0, 0); } to { transform: translate(var(--dx, 0px), -100%); } }
+@keyframes caer-columna { from { transform: translate(0, -100%); } to { transform: translate(var(--dx, 0px), 0); } }
+
+/* Brasas: chispas que suben y se apagan. */
+.brasa > i {
+  bottom: 0;
+  border-radius: 9999px;
+  background: var(--color-cobre-2);
+  box-shadow: 0 0 6px 2px color-mix(in oklab, var(--color-cobre) 75%, transparent);
+  animation: chispa var(--d) linear infinite;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes chispa {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  60% { opacity: .9; }
+  100% { opacity: 0; transform: scale(.4); }
+}
+
+/* Confeti: papelitos que caen girando. */
+.confeti > i { bottom: 0; height: calc(var(--t) * .45); border-radius: 2px; animation: voltear var(--g, 2s) linear infinite; }
+@keyframes voltear { to { transform: rotate3d(1, .4, .2, 360deg); } }
+
+/* Bokeh: círculos de luz desenfocados que van a la deriva. */
+.bokeh { position: absolute; border-radius: 9999px; animation: deriva var(--d) ease-in-out infinite alternate; animation-delay: var(--delay, 0s); }
+@keyframes deriva {
+  0% { transform: translate(0, 0) scale(1); opacity: var(--o); }
+  50% { opacity: calc(var(--o) * 1.8); }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.3); opacity: calc(var(--o) * .6); }
+}
+
+/* Ondas: anillos que se expanden desde abajo. */
+.onda {
+  position: absolute;
+  left: 50%;
+  top: 88%;
+  width: 150%;
+  aspect-ratio: 1;
+  border: 1.5px solid color-mix(in oklab, var(--color-cobre) 70%, transparent);
+  border-radius: 9999px;
+  translate: -50% -50%;
+  animation: onda 10s cubic-bezier(.25,.6,.4,1) infinite;
+  animation-delay: var(--delay, 0s);
+  opacity: 0;
+}
+@keyframes onda {
+  from { transform: scale(.04); opacity: .7; }
+  to { transform: scale(1); opacity: 0; }
+}
+
+/* Estrellas fugaces. */
+.fugaz {
+  position: absolute;
+  width: 22%;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, var(--color-cal));
+  border-radius: 9999px;
+  rotate: -28deg;
+  opacity: 0;
+  animation: fugaz var(--d, 9s) ease-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes fugaz {
+  0% { transform: translateX(0); opacity: 0; }
+  2% { opacity: 1; }
+  9% { transform: translateX(160%); opacity: 0; }
+  100% { transform: translateX(160%); opacity: 0; }
+}
+
+/* Aurora: bandas de color que ondulan despacio. */
+.aurora { position: absolute; border-radius: 50%; filter: blur(26px); animation: aurora var(--d, 18s) ease-in-out infinite alternate; animation-delay: var(--delay, 0s); }
+@keyframes aurora {
+  0% { transform: translateX(-26%) translateY(0) rotate(-10deg) skewX(-12deg) scaleY(.7); opacity: .5; }
+  33% { transform: translateX(-4%) translateY(12%) rotate(4deg) skewX(10deg) scaleY(1.35); opacity: 1; }
+  66% { transform: translateX(14%) translateY(-6%) rotate(-4deg) skewX(-8deg) scaleY(.9); opacity: .7; }
+  100% { transform: translateX(26%) translateY(8%) rotate(9deg) skewX(12deg) scaleY(1.25); opacity: .95; }
+}
+
+/* Cuadrícula retro: desde el horizonte, un piso de líneas que avanza hacia ti. */
+/* El piso gira sobre su borde de abajo y se aleja hasta el horizonte (el punto de fuga está arriba). */
+.horizonte {
+  position: absolute;
+  inset: 46% 0 0;
+  overflow: hidden;
+  perspective: 300px;
+  perspective-origin: 50% 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 30%);
+  mask-image: linear-gradient(to bottom, transparent, black 30%);
+}
+.piso {
+  position: absolute;
+  left: -100%;
+  right: -100%;
+  bottom: 0;
+  height: 300%;
+  background-image:
+    linear-gradient(var(--color-cobre) 2px, transparent 2px),
+    linear-gradient(90deg, var(--color-cobre) 2px, transparent 2px);
+  background-size: 48px 48px;
+  transform: rotateX(75deg);
+  transform-origin: bottom center;
+  animation: avanzar 1.4s linear infinite;
+}
+@keyframes avanzar { to { background-position: 0 48px; } }
+
+/* Transición entre páginas (navegadores con View Transitions). */
+::view-transition-old(root) { animation: 180ms ease-in both salir; }
+::view-transition-new(root) { animation: 260ms ease-out both entrar; }
+@keyframes salir { to { opacity: 0; } }
+@keyframes entrar { from { opacity: 0; transform: translateY(8px); } }
+
+/* Ventanas del panel: suben desde abajo (respuesta a la acción de abrir). */
+@keyframes subir { from { transform: translateY(24px); opacity: 0; } }
+.modal[open] { animation: subir 220ms ease-out; }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .encender, .luz, .burbuja, .rayos, .flotar, .respirar, .neblina, .luciernaga, .cielo-gira, .modal[open], .columna, .columna > i, .bokeh, .onda, .fugaz, .aurora, .piso,
+  .avatar::before, .avatar::after { animation: none; }
+  .onda { opacity: .25; transform: scale(.6); }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+  html { scroll-behavior: auto; }
+}

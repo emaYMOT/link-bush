@@ -1,0 +1,155 @@
+import { store, type Collection, type RowOf } from './store'
+import { iconoSeccion } from './icons'
+import { temaDePlantilla } from './plantillas'
+import type { Category, LinkButton, MenuItem, PriceUnit, Site, Subcategory } from './types'
+import { palabras, slugify, VOCAB_PRESETS } from './vocab'
+
+/** Direcciones que no puede usar una página porque las usa la app. */
+export const SLUGS_RESERVADOS = ['admin']
+
+export function slugError(slug: string, sites: Site[], except?: string): string {
+  if (!slug) return 'Escribe la dirección.'
+  if (slug.length < 2) return 'Usa al menos 2 letras.'
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) return 'Solo minúsculas, números y guiones (sin tildes ni espacios).'
+  if (SLUGS_RESERVADOS.includes(slug)) return 'Esa dirección la usa el panel. Elige otra.'
+  if (sites.some((s) => s.slug === slug && s.id !== except)) return 'Ya hay una página con esa dirección.'
+  return ''
+}
+
+/** Una dirección libre a partir del nombre: "Pez y Mar" -> "pez-y-mar" (o "pez-y-mar-2"). */
+export function slugLibre(name: string, sites: Site[]): string {
+  const base = slugify(name) || 'pagina'
+  let slug = base
+  for (let i = 2; slugError(slug, sites); i++) slug = `${base}-${i}`
+  return slug
+}
+
+/** Dirección pública completa de una página (la que va en el QR). */
+export function urlPublica(slug: string): string {
+  return `${location.origin}${location.pathname}#/${slug}`
+}
+
+/** Página nueva en borrador, con el botón de la carta y tres botones de ejemplo ocultos para completar. */
+export async function crearPagina({ name, slug, tipo, plantilla }: { name: string; slug: string; tipo: Site['vocab']['tipo']; plantilla: string }) {
+  const vocab = structuredClone(VOCAB_PRESETS[tipo])
+  const site = await store.createSite({
+    slug, name, description: '', avatar_url: null, published: false,
+    theme: temaDePlantilla(plantilla), vocab, seo_title: null, seo_description: null,
+  })
+  const base = { site_id: site.id, is_active: false } as const
+  const starter: LinkButton[] = [
+    { ...base, id: crypto.randomUUID(), position: 0, label: palabras(vocab).boton, type: 'menu', url: null, icon: iconoSeccion(tipo), is_active: true },
+    { ...base, id: crypto.randomUUID(), position: 1, label: vocab.ejemplos.boton, type: 'url', url: 'https://wa.me/57', icon: 'whatsapp' },
+    { ...base, id: crypto.randomUUID(), position: 2, label: 'Síguenos en Instagram', type: 'url', url: 'https://www.instagram.com/', icon: 'instagram' },
+    { ...base, id: crypto.randomUUID(), position: 3, label: 'Cómo llegar', type: 'url', url: 'https://maps.google.com/', icon: 'map' },
+  ]
+  await store.insertMany('links', starter)
+  return site
+}
+
+/** Copia una página con todo su contenido. La copia queda en borrador. */
+export async function duplicarPagina(source: Site, name: string, slug: string) {
+  const { id: _id, created_at: _c, updated_at: _u, ...fields } = source
+  const site = await store.createSite({ ...structuredClone(fields), name, slug, published: false })
+  const ids = new Map<string, string>()
+  const nuevo = (old: string) => {
+    const id = crypto.randomUUID()
+    ids.set(old, id)
+    return id
+  }
+  const copy = async <C extends Collection>(c: C, map: (row: RowOf<C>) => RowOf<C>) => {
+    const rows = await store.list(c, source.id)
+    await store.insertMany(c, rows.map((r) => ({ ...map(r), site_id: site.id })))
+  }
+  await copy('links', (r) => ({ ...r, id: crypto.randomUUID() }))
+  await copy('menu_categories', (r) => ({ ...r, id: nuevo(r.id) }))
+  await copy('menu_subcategories', (r) => ({ ...r, id: nuevo(r.id), category_id: ids.get(r.category_id)! }))
+  await copy('menu_items', (r) => ({
+    ...r,
+    id: crypto.randomUUID(),
+    category_id: ids.get(r.category_id)!,
+    subcategory_id: r.subcategory_id ? (ids.get(r.subcategory_id) ?? null) : null,
+  }))
+  return site
+}
+
+// ---------------------------------------------------------------- Importar catálogo (JSON)
+
+/**
+ * Acepta los dos formatos que ya usamos:
+ * - Pez y Mar (catalogo.json): productos como objetos { nombre, precio, unidad, foto, descripcion, disponible }.
+ * - Al Aire (carta-real.json): platos como [nombre, precio, descripción] y subcategorias: [{ nombre, platos }].
+ */
+interface ProductoJson { nombre: string; precio?: number; unidad?: PriceUnit | null; foto?: string | null; descripcion?: string | null; disponible?: boolean }
+type PlatoJson = ProductoJson | [string, number?, (string | null)?]
+interface GrupoJson { nombre: string; platos?: PlatoJson[]; productos?: PlatoJson[] }
+interface CategoriaJson extends GrupoJson { emoji?: string | null; descripcion?: string | null; portada?: string | null; subcategorias?: GrupoJson[] }
+
+export interface CatalogoImportado {
+  categorias: { nombre: string; emoji: string | null; descripcion: string | null; portada: string | null; grupos: { nombre: string | null; productos: ProductoJson[] }[] }[]
+}
+
+const UNIDADES: PriceUnit[] = ['lb', 'unidad', 'kg']
+// Las fotos con ruta relativa eran de la otra web: aquí no existen, así que se omiten.
+const soloUrl = (v: string | null | undefined) => (v && /^https?:\/\//.test(v) ? v : null)
+
+function producto(p: PlatoJson): ProductoJson {
+  if (Array.isArray(p)) return { nombre: String(p[0] ?? '').trim(), precio: Number(p[1]) || 0, descripcion: p[2] ?? null }
+  return { ...p, nombre: String(p.nombre ?? '').trim(), precio: Number(p.precio) || 0 }
+}
+
+export function leerCatalogo(texto: string): CatalogoImportado {
+  let json: { categorias?: CategoriaJson[] }
+  try {
+    json = JSON.parse(texto)
+  } catch {
+    throw new Error('El archivo no es un JSON válido.')
+  }
+  if (!Array.isArray(json.categorias)) throw new Error('No encontré la lista "categorias" en el archivo.')
+  const categorias = json.categorias.map((c) => {
+    if (!c?.nombre) throw new Error('Hay una categoría sin "nombre".')
+    const sueltos = [...(c.platos ?? []), ...(c.productos ?? [])].map(producto)
+    const grupos = [
+      { nombre: null, productos: sueltos },
+      ...(c.subcategorias ?? []).map((s) => ({ nombre: String(s.nombre).trim(), productos: [...(s.platos ?? []), ...(s.productos ?? [])].map(producto) })),
+    ].filter((g) => g.productos.length > 0 || g.nombre)
+    return { nombre: String(c.nombre).trim().slice(0, 40), emoji: c.emoji ?? null, descripcion: c.descripcion ?? null, portada: soloUrl(c.portada), grupos }
+  })
+  if (categorias.some((c) => c.grupos.some((g) => g.productos.some((p) => !p.nombre)))) throw new Error('Hay un producto sin nombre.')
+  return { categorias }
+}
+
+export function contarProductos(cat: CatalogoImportado) {
+  return cat.categorias.reduce((n, c) => n + c.grupos.reduce((m, g) => m + g.productos.length, 0), 0)
+}
+
+/** Agrega el catálogo a la página (o lo reemplaza: borra antes todas las categorías). */
+export async function importarCatalogo(siteId: string, cat: CatalogoImportado, reemplazar: boolean) {
+  const existentes = await store.list('menu_categories', siteId)
+  if (reemplazar) for (const c of existentes) await store.remove('menu_categories', c.id)
+  let posCat = reemplazar ? 0 : existentes.reduce((m, c) => Math.max(m, c.position + 1), 0)
+
+  const categories: Category[] = []
+  const subcategories: Subcategory[] = []
+  const items: MenuItem[] = []
+  for (const c of cat.categorias) {
+    const categoryId = crypto.randomUUID()
+    categories.push({ id: categoryId, site_id: siteId, name: c.nombre, emoji: c.emoji, description: c.descripcion, image_url: c.portada, position: posCat++, is_active: true })
+    let posItem = 0
+    c.grupos.forEach((g, gi) => {
+      const subId = g.nombre ? crypto.randomUUID() : null
+      if (subId) subcategories.push({ id: subId, site_id: siteId, category_id: categoryId, name: g.nombre!.slice(0, 40), position: gi })
+      for (const p of g.productos) {
+        items.push({
+          id: crypto.randomUUID(), site_id: siteId, category_id: categoryId, subcategory_id: subId,
+          name: p.nombre.slice(0, 70), description: p.descripcion?.trim() || null, price: Math.max(0, Math.round(p.precio ?? 0)),
+          unit: p.unidad && UNIDADES.includes(p.unidad) ? p.unidad : null, image_url: soloUrl(p.foto),
+          position: posItem++, is_available: p.disponible ?? true, is_active: true,
+        })
+      }
+    })
+  }
+  await store.insertMany('menu_categories', categories)
+  await store.insertMany('menu_subcategories', subcategories)
+  await store.insertMany('menu_items', items)
+}

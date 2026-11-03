@@ -1,0 +1,23 @@
+{
+  "_nota": "Ejemplo del formato para «Importar» en Ajustes. Sirven los dos estilos: productos como objetos o platos como [nombre, precio, descripción].",
+  "categorias": [
+    {
+      "nombre": "Pescados",
+      "emoji": "🐟",
+      "descripcion": "Frescos del día.",
+      "productos": [
+        { "nombre": "Tilapia roja", "precio": 12500, "unidad": "lb", "descripcion": "Entera, limpia." },
+        { "nombre": "Trucha", "precio": 15000, "unidad": "unidad", "disponible": false }
+      ]
+    },
+    {
+      "nombre": "Bebidas",
+      "emoji": "🍹",
+      "platos": [["Agua natural", 4000]],
+      "subcategorias": [
+        { "nombre": "Jugos", "platos": [["Jugo de mora", 8000, "En agua o en leche."], ["Limonada", 7000]] },
+        { "nombre": "Cervezas", "platos": [["Club Colombia", 9000]] }
+      ]
+    }
+  ]
+}
